@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบสมุดรายวันเฉพาะ - ร้านสมมติ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#f3f6ef;--sf:#fff;--tx:#1d2a22;--mu:#5d6b62;--ac:#1f6f4a;--ac2:#e3efe7;--bd:#cfd9d1;--er:#b3261e;--erbg:#fbe9e7;--ok:#1f6f4a;--okbg:#e3efe7;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a16;--sf:#1d2620;--tx:#e6eee8;--mu:#9bab9f;--ac:#6fcf9b;--ac2:#25382d;--bd:#33443a;--er:#ff9d94;--erbg:#3b1f1c;--ok:#6fcf9b;--okbg:#1f3328;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141a16;--sf:#1d2620;--tx:#e6eee8;--mu:#9bab9f;--ac:#6fcf9b;--ac2:#25382d;--bd:#33443a;--er:#ff9d94;--erbg:#3b1f1c;--ok:#6fcf9b;--okbg:#1f3328;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 Sarabun,"Noto Sans Thai",system-ui,sans-serif;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+header{padding:18px 16px 8px;max-width:1000px;margin:0 auto}
+h1{font-size:22px;margin:0}h2{font-size:18px;margin:18px 0 8px}h3{font-size:16px;margin:14px 0 6px}
+.sub{color:var(--mu);font-size:14px}
+nav{display:flex;flex-wrap:wrap;gap:6px;max-width:1000px;margin:0 auto;padding:8px 16px}
+nav button,.btn{font:inherit;border:1px solid var(--bd);background:var(--sf);color:var(--tx);padding:6px 12px;border-radius:6px;cursor:pointer}
+nav button.on,.btn.pr{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}
+nav button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+main{max-width:1000px;margin:0 auto;padding:0 16px 40px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px;margin:10px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mu);gap:2px}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);min-width:110px}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}
+th{background:var(--ac2);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cr{padding-left:28px}
+.msg{padding:8px 12px;border-radius:6px;margin:8px 0;font-weight:600}
+.msg.e{background:var(--erbg);color:var(--er)}.msg.o{background:var(--okbg);color:var(--ok)}
+tr.tot td{font-weight:700;border-top:2px solid var(--tx)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+</style></head><body>
+<header><h1>ระบบสมุดรายวันเฉพาะ: ร้านเครื่องเขียนสมมติ</h1>
+<div class="sub">กิจการซื้อมาขายไป ไม่มี VAT ใช้ระบบเมื่อสิ้นงวด ข้อมูลทั้งหมดเป็นข้อมูลสมมติ ข้อมูลอยู่ในหน้านี้ รีเฟรชแล้วหาย</div></header>
+<nav id="nav"></nav><main id="app"></main>
+<script>
+const A=[['1100','เงินสด'],['1200','ลูกหนี้การค้า'],['1400','อุปกรณ์สำนักงาน'],['2100','เจ้าหนี้การค้า'],['2200','เจ้าหนี้อื่น'],['3100','ทุน - นายสมมติ'],['3200','ถอนใช้ส่วนตัว'],['4100','ขาย'],['4110','รับคืนสินค้า'],['5100','ซื้อ'],['5110','ส่งคืนสินค้า'],['5200','ค่าเช่า'],['5300','เงินเดือน'],['5400','ค่าสาธารณูปโภค']];
+const N=Object.fromEntries(A);
+const J={P:'สมุดรายวันซื้อ',S:'สมุดรายวันขาย',R:'สมุดรายวันรับเงิน',C:'สมุดรายวันจ่ายเงิน',G:'สมุดรายวันทั่วไป'};
+const NAV=[['P','สมุดซื้อ'],['S','สมุดขาย'],['R','สมุดรับเงิน'],['C','สมุดจ่ายเงิน'],['G','สมุดทั่วไป'],['L','แยกประเภททั่วไป'],['B','บัญชีย่อย'],['T','งบทดลอง']];
+// type: [debit, credit, account that carries party name]
+const T={P:{'ซื้อสินค้าเชื่อ':['5100','2100','2100']},
+S:{'ขายสินค้าเชื่อ':['1200','4100','1200']},
+R:{'รับชำระหนี้จากลูกหนี้':['1100','1200','1200'],'ขายสด':['1100','4100',''],'เจ้าของลงทุนเพิ่ม':['1100','3100','']},
+C:{'จ่ายชำระหนี้เจ้าหนี้':['2100','1100','2100'],'ซื้อสินค้าสด':['5100','1100',''],'จ่ายค่าเช่า':['5200','1100',''],'จ่ายเงินเดือน':['5300','1100',''],'จ่ายค่าสาธารณูปโภค':['5400','1100',''],'เจ้าของถอนใช้ส่วนตัว':['3200','1100','']}};
+const SUB=['1200','2100'];
+let E=[],id=0,v='P',msg=null,gl=[{a:'',d:'',c:'',p:''},{a:'',d:'',c:'',p:''}];
+const $=s=>document.querySelector(s);
+const f=x=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const r2=x=>Math.round(x*100)/100;
+function build(j,t,date,ref,party,amt,desc){const [d,c,pa]=T[j][t];
+ return {id:++id,j,date,ref,desc:desc||t,lines:[{a:d,d:amt,c:0,p:d==pa?party:''},{a:c,d:0,c:amt,p:c==pa?party:''}]};}
+const sorted=()=>[...E].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
+function bal(){const b={};A.forEach(([k])=>b[k]=0);E.forEach(e=>e.lines.forEach(l=>b[l.a]+=l.d-l.c));return b;}
+function subs(){const s={};SUB.forEach(k=>s[k]={});E.forEach(e=>e.lines.forEach(l=>{if(SUB.includes(l.a)){const m=s[l.a];m[l.p]=(m[l.p]||0)+l.d-l.c;}}));return s;}
+function go(x){v=x;msg=null;render();}
+function render(){
+ $('#nav').innerHTML=NAV.map(([k,n])=>`<button class="${v==k?'on':''}" onclick="go('${k}')">${n}</button>`).join('')+
+ `<button class="btn" onclick="loadSample()">โหลดตัวอย่าง</button><button class="btn" onclick="E=[];msg=null;render()">ล้างข้อมูล</button>`;
+ $('#app').innerHTML=J[v]?journalPage(v):v=='L'?ledgerPage():v=='B'?subPage():tbPage();
+ if(v=='G')gTot();
+}
+function msgH(){return msg?`<div class="msg ${msg[0]}">${esc(msg[1])}</div>`:'';}
+function entriesTable(j){
+ const L=sorted().filter(e=>e.j==j);
+ if(!L.length)return '<p class="sub">ยังไม่มีรายการ กรอกแบบฟอร์มด้านบน หรือกดปุ่มโหลดตัวอย่าง</p>';
+ return `<div class="wrap"><table><tr><th>วันที่</th><th>อ้างอิง</th><th>รายการ / บัญชี</th><th class="n">เดบิต</th><th class="n">เครดิต</th></tr>`+
+ L.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.ref)}</td><td><b>${esc(e.desc)}</b></td><td></td><td></td></tr>`+
+ e.lines.map(l=>`<tr><td></td><td></td><td class="${l.c?'cr':''}">${l.a} ${N[l.a]}${l.p?' ('+esc(l.p)+')':''}</td><td class="n">${l.d?f(l.d):''}</td><td class="n">${l.c?f(l.c):''}</td></tr>`).join('')).join('')+'</table></div>';
+}
+function journalPage(j){
+ let form;
+ if(j=='G'){
+  form=`<div class="row"><label>วันที่<input type="date" id="dt"></label><label>อ้างอิง<input id="rf"></label><label style="flex:1">คำอธิบาย<input id="ds"></label></div>
+  <div id="gl"></div><div class="bar"><button class="btn" onclick="addRow()">เพิ่มบรรทัด</button><span id="gt" class="sub"></span></div>
+  <button class="btn pr" onclick="saveG()">บันทึกรายการ</button>`;
+  setTimeout(gRows,0);
+ } else {
+  const ty=Object.keys(T[j]);
+  form=`<div class="row"><label>วันที่<input type="date" id="dt"></label><label>อ้างอิง<input id="rf" placeholder="เช่น ใบกำกับ"></label>
+  ${ty.length>1?`<label>ประเภทรายการ<select id="ty">${ty.map(t=>`<option>${t}</option>`).join('')}</select></label>`:`<input type="hidden" id="ty" value="${ty[0]}"><span class="sub">${ty[0]}</span>`}
+  <label>ชื่อลูกหนี้/เจ้าหนี้ (ถ้ามี)<input id="pt"></label><label>จำนวนเงิน<input type="number" id="am" min="0" step="0.01"></label>
+  <label style="flex:1">คำอธิบาย<input id="ds"></label><button class="btn pr" onclick="save('${j}')">บันทึก</button></div>`;
+ }
+ return `<h2>${J[j]}</h2><div class="card">${form}${msgH()}</div>${entriesTable(j)}`;
+}
+function save(j){
+ const t=$('#ty').value,[d,c,pa]=T[j][t],date=$('#dt').value,amt=r2(+$('#am').value),p=$('#pt').value.trim();
+ if(!date||!(amt>0)){msg=['e','กรอกวันที่และจำนวนเงินที่มากกว่า 0'];return render();}
+ if(pa&&!p){msg=['e','รายการนี้ต้องระบุชื่อ'+(pa=='1200'?'ลูกหนี้':'เจ้าหนี้')];return render();}
+ E.push(build(j,t,date,$('#rf').value,p,amt,$('#ds').value));msg=['o','บันทึกและผ่านรายการไปบัญชีแยกประเภทแล้ว'];render();
+}
+function gRows(){const el=$('#gl');if(!el)return;
+ el.innerHTML=`<div class="wrap"><table><tr><th>บัญชี</th><th>เดบิต</th><th>เครดิต</th><th>ชื่อลูกหนี้/เจ้าหนี้</th></tr>`+gl.map((r,i)=>`<tr><td><select onchange="gl[${i}].a=this.value">${'<option value="">เลือกบัญชี</option>'+A.map(([k,n])=>`<option value="${k}" ${r.a==k?'selected':''}>${k} ${n}</option>`).join('')}</select></td>
+ <td><input type="number" min="0" step="0.01" value="${r.d}" oninput="gl[${i}].d=this.value;gTot()"></td><td><input type="number" min="0" step="0.01" value="${r.c}" oninput="gl[${i}].c=this.value;gTot()"></td>
+ <td><input value="${esc(r.p)}" oninput="gl[${i}].p=this.value"></td></tr>`).join('')+'</table></div>';}
+function addRow(){gl.push({a:'',d:'',c:'',p:''});gRows();}
+function gTot(){const d=gl.reduce((s,r)=>s+(+r.d||0),0),c=gl.reduce((s,r)=>s+(+r.c||0),0),el=$('#gt');if(el)el.textContent=`รวมเดบิต ${f(d)} | รวมเครดิต ${f(c)} | ผลต่าง ${f(r2(d-c))}`;}
+function saveG(){
+ const date=$('#dt').value,ls=gl.filter(r=>r.a||r.d||r.c);
+ if(!date)return err('กรอกวันที่');
+ if(ls.length<2)return err('ต้องมีอย่างน้อย 2 บรรทัด');
+ for(const r of ls){const d=+r.d||0,c=+r.c||0;
+  if(!r.a)return err('มีบรรทัดที่ยังไม่เลือกบัญชี');
+  if((d>0)==(c>0))return err('แต่ละบรรทัดต้องใส่เดบิตหรือเครดิตอย่างใดอย่างหนึ่ง');
+  if(SUB.includes(r.a)&&!r.p.trim())return err('บัญชี '+N[r.a]+' ต้องระบุชื่อบัญชีย่อย');}
+ const D=r2(ls.reduce((s,r)=>s+(+r.d||0),0)),C=r2(ls.reduce((s,r)=>s+(+r.c||0),0));
+ if(D!==C)return err(`บันทึกไม่ได้: เดบิต ${f(D)} ไม่เท่ากับเครดิต ${f(C)}`);
+ E.push({id:++id,j:'G',date,ref:$('#rf').value,desc:$('#ds').value||'รายการทั่วไป',lines:ls.map(r=>({a:r.a,d:r2(+r.d||0),c:r2(+r.c||0),p:SUB.includes(r.a)?r.p.trim():''}))});
+ gl=[{a:'',d:'',c:'',p:''},{a:'',d:'',c:'',p:''}];msg=['o','บันทึกและผ่านรายการแล้ว'];render();
+}
+function err(m){msg=['e',m];render();}
+function ledgerPage(){
+ const S=sorted();let h='<h2>บัญชีแยกประเภททั่วไป</h2><p class="sub">ผ่านรายการอัตโนมัติจากสมุดรายวันทุกเล่ม</p>';
+ A.forEach(([k,n])=>{let b=0;const rows=[];S.forEach(e=>e.lines.forEach(l=>{if(l.a==k){b=r2(b+l.d-l.c);rows.push(`<tr><td>${esc(e.date)}</td><td>${e.j}</td><td>${esc(e.desc)}${l.p?' ('+esc(l.p)+')':''}</td><td class="n">${l.d?f(l.d):''}</td><td class="n">${l.c?f(l.c):''}</td><td class="n">${f(Math.abs(b))} ${b>=0?'ด':'ก'}</td></tr>`);}}));
+  if(rows.length)h+=`<h3>${k} ${n}</h3><div class="wrap"><table><tr><th>วันที่</th><th>สมุด</th><th>คำอธิบาย</th><th class="n">เดบิต</th><th class="n">เครดิต</th><th class="n">คงเหลือ</th></tr>${rows.join('')}</table></div>`;});
+ return h;
+}
+function subPage(){
+ const S=sorted(),s=subs(),b=bal();let h='<h2>บัญชีแยกประเภทย่อย</h2>',ok=true;
+ SUB.forEach(k=>{const ar=k=='1200',names=Object.keys(s[k]);let tot=0;
+  h+=`<h3>${k} ${N[k]} (บัญชีคุม)</h3>`;
+  names.forEach(p=>{let run=0;const rows=[];S.forEach(e=>e.lines.forEach(l=>{if(l.a==k&&l.p==p){run=r2(run+(ar?l.d-l.c:l.c-l.d));rows.push(`<tr><td>${esc(e.date)}</td><td>${esc(e.desc)}</td><td class="n">${l.d?f(l.d):''}</td><td class="n">${l.c?f(l.c):''}</td><td class="n">${f(run)}</td></tr>`);}}));
+   tot=r2(tot+run);h+=`<div class="card"><b>${esc(p)}</b> ยอดคงเหลือ ${f(run)}<div class="wrap"><table><tr><th>วันที่</th><th>คำอธิบาย</th><th class="n">เดบิต</th><th class="n">เครดิต</th><th class="n">คงเหลือ</th></tr>${rows.join('')}</table></div></div>`;});
+  const ctl=r2(ar?b[k]:-b[k]),same=tot===ctl;if(!same)ok=false;
+  h+=`<div class="msg ${same?'o':'e'}">รวมบัญชีย่อย ${f(tot)} | บัญชีคุม ${f(ctl)} | ${same?'ตรงกัน':'ไม่ตรงกัน'}</div>`;});
+ return h;
+}
+function tbPage(){
+ const b=bal();let D=0,C=0;
+ const rows=A.filter(([k])=>b[k]!==0).map(([k,n])=>{const x=r2(b[k]);if(x>0)D+=x;else C-=x;return `<tr><td>${k}</td><td>${n}</td><td class="n">${x>0?f(x):''}</td><td class="n">${x<0?f(-x):''}</td></tr>`;}).join('');
+ D=r2(D);C=r2(C);
+ const m=!E.length?'':D===C?`<div class="msg o">งบทดลองสมดุล: เดบิต = เครดิต = ${f(D)}</div>`:`<div class="msg e">แจ้งเตือน: เดบิต ${f(D)} ไม่เท่ากับเครดิต ${f(C)} ผลต่าง ${f(r2(D-C))}</div>`;
+ return `<h2>งบทดลอง</h2>${m}${E.length?`<div class="wrap"><table><tr><th>รหัส</th><th>ชื่อบัญชี</th><th class="n">เดบิต</th><th class="n">เครดิต</th></tr>${rows}<tr class="tot"><td></td><td>รวม</td><td class="n">${f(D)}</td><td class="n">${f(C)}</td></tr></table></div>`:'<p class="sub">ยังไม่มีรายการ กดปุ่มโหลดตัวอย่างเพื่อดูรายการค้า</p>'}`;
+}
+function loadSample(){
+ E=[];id=0;
+ const a=(j,t,d,r,p,m,ds)=>E.push(build(j,t,'2026-11-'+d,r,p,m,ds));
+ a('R','เจ้าของลงทุนเพิ่ม','01','R1','',200000,'นายสมมติลงทุนเป็นเงินสด');
+ a('P','ซื้อสินค้าเชื่อ','02','P1','บจก. ส่งดี',60000,'ซื้อสมุดและปากกาเชื่อ');
+ a('C','จ่ายค่าเช่า','03','C1','',8000,'จ่ายค่าเช่าร้านเดือนพฤศจิกายน');
+ a('S','ขายสินค้าเชื่อ','04','S1','ลูกค้า ก',25000,'ขายเชื่อให้ลูกค้า ก');
+ a('R','ขายสด','05','R2','',12000,'ขายสินค้าเป็นเงินสด');
+ a('C','ซื้อสินค้าสด','06','C2','',15000,'ซื้อสินค้าเป็นเงินสด');
+ E.push({id:++id,j:'G',date:'2026-11-08',ref:'G1',desc:'ซื้ออุปกรณ์สำนักงานเชื่อ',lines:[{a:'1400',d:18000,c:0,p:''},{a:'2200',d:0,c:18000,p:''}]});
+ a('S','ขายสินค้าเชื่อ','10','S2','ลูกค้า ข',30000,'ขายเชื่อให้ลูกค้า ข');
+ a('R','รับชำระหนี้จากลูกหนี้','12','R3','ลูกค้า ก',25000,'ลูกค้า ก ชำระหนี้');
+ a('C','จ่ายชำระหนี้เจ้าหนี้','14','C3','บจก. ส่งดี',30000,'จ่ายชำระหนี้บางส่วน');
+ a('P','ซื้อสินค้าเชื่อ','15','P2','หจก. คลังสินค้า',40000,'ซื้อสินค้าเชื่อ');
+ E.push({id:++id,j:'G',date:'2026-11-17',ref:'G2',desc:'ลูกค้า ข ส่งคืนสินค้า',lines:[{a:'4110',d:2000,c:0,p:''},{a:'1200',d:0,c:2000,p:'ลูกค้า ข'}]});
+ a('C','จ่ายเงินเดือน','20','C4','',12000,'จ่ายเงินเดือนพนักงาน');
+ a('S','ขายสินค้าเชื่อ','22','S3','ลูกค้า ค',18000,'ขายเชื่อให้ลูกค้า ค');
+ a('C','เจ้าของถอนใช้ส่วนตัว','25','C5','',5000,'นายสมมติถอนเงินใช้ส่วนตัว');
+ a('C','จ่ายค่าสาธารณูปโภค','26','C6','',3500,'จ่ายค่าน้ำค่าไฟ');
+ E.push({id:++id,j:'G',date:'2026-11-28',ref:'G3',desc:'ส่งคืนสินค้าให้ บจก. ส่งดี',lines:[{a:'2100',d:3000,c:0,p:'บจก. ส่งดี'},{a:'5110',d:0,c:3000,p:''}]});
+ msg=['o','โหลดรายการค้าตัวอย่าง 17 รายการแล้ว'];render();
+}
+render();
+</script></body></html>
